@@ -14,7 +14,7 @@ load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 if not TOKEN:
-    raise ValueError("❌ DISCORD_TOKEN не найден в .env файле!")
+    raise ValueError("❌ DISCORD_TOKEN not found in .env file!")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -30,8 +30,8 @@ idle_disconnect = {}
 
 @bot.event
 async def on_ready():
-    await bot.change_presence(status=discord.Status.idle, activity=discord.Game("Музыку"))
-    print(f"✅ Бот {bot.user} запущен и готов!")
+    await bot.change_presence(status=discord.Status.idle, activity=discord.Game("Music"))
+    print(f"✅ Bot {bot.user} launched and ready!")
 
 def get_queue(guild_id):
     if guild_id not in queues:
@@ -66,14 +66,14 @@ async def search_music(query):
                     tracks.append({
                         "title": entry["title"],
                         "url": f"https://www.youtube.com/watch?v={entry['id']}",
-                        "author": entry.get("uploader", "Неизвестен"),
+                        "author": entry.get("uploader", "Unknown"),
                         "duration_seconds": duration,
                         "duration": f"{mins}:{secs:02d}",
                         "thumbnail": entry.get("thumbnail"),
                     })
             return tracks
         except Exception as e:
-            print(f"[YT-DLP Ошибка]: {e}")
+            print(f"[YT-DLP Error]: {e}")
             return None
 
 async def extract_info_from_url(url):
@@ -92,13 +92,13 @@ async def extract_info_from_url(url):
                 return {
                     'title': info['title'],
                     'url': f"https://www.youtube.com/watch?v={info['id']}",
-                    'author': info.get('uploader', 'Неизвестен'),
+                    'author': info.get('uploader', 'Unknown'),
                     'duration': f"{mins}:{secs:02d}",
                     'duration_seconds': duration,
                     'thumbnail': info.get('thumbnail'),
                 }
         except Exception as e:
-            print(f"[YT-DLP Ошибка]: {e}")
+            print(f"[YT-DLP Error]: {e}")
             return None
 
 class MusicControls(View):
@@ -108,38 +108,38 @@ class MusicControls(View):
         self.ctx = ctx
         self.track = track
 
-    @button(label="⏯ Пауза/Продолжить", style=discord.ButtonStyle.primary)
+    @button(label="⏯ Pause/Continue", style=discord.ButtonStyle.primary)
     async def pause_resume(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(ephemeral=True)
         if self.player.is_paused():
             self.player.resume()
-            await interaction.followup.send("▶ Продолжено", ephemeral=True)
+            await interaction.followup.send("▶ Continued", ephemeral=True)
         else:
             self.player.pause()
-            await interaction.followup.send("⏸ Пауза", ephemeral=True)
+            await interaction.followup.send("⏸ Pause", ephemeral=True)
 
-    @button(label="🔁 Повтор", style=discord.ButtonStyle.secondary)
+    @button(label="🔁 Repeat", style=discord.ButtonStyle.secondary)
     async def repeat(self, interaction: discord.Interaction, button: discord.ui.Button):
         toggle_repeat_flag(self.ctx.guild.id)
-        status = "включен" if get_repeat_flag(self.ctx.guild.id) else "выключен"
-        await interaction.response.send_message(f"🔁 Повтор {status}", ephemeral=True)
+        status = "included" if get_repeat_flag(self.ctx.guild.id) else "turned off"
+        await interaction.response.send_message(f"🔁 Repeat {status}", ephemeral=True)
 
-    @button(label="⏭ Пропустить", style=discord.ButtonStyle.danger)
+    @button(label="⏭ Skip", style=discord.ButtonStyle.danger)
     async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(ephemeral=True)
         if self.player.is_playing():
             self.player.stop()
-        await interaction.followup.send("⏭ Трек пропущен.", ephemeral=True)
+        await interaction.followup.send("⏭ Track skipped.", ephemeral=True)
 
-    @button(label="📄 Очередь", style=discord.ButtonStyle.success)
+    @button(label="📄 Queue", style=discord.ButtonStyle.success)
     async def show_queue(self, interaction: discord.Interaction, button: discord.ui.Button):
         queue = list(get_queue(self.ctx.guild.id)._queue)
         if not queue:
-            await interaction.response.send_message("📭 Очередь пуста.", ephemeral=True)
+            await interaction.response.send_message("📭 The queue is empty.", ephemeral=True)
             return
-        embed = discord.Embed(title="📄 Очередь треков", color=discord.Color.green())
+        embed = discord.Embed(title="📄 Track queue", color=discord.Color.green())
         for i, track in enumerate(queue[:10], start=1):
-            embed.add_field(name=f"{i}. {track['title']}", value=f"Длительность: `{track['duration']}`", inline=False)
+            embed.add_field(name=f"{i}. {track['title']}", value=f"Duration: `{track['duration']}`", inline=False)
         await interaction.response.send_message(embed=embed, ephemeral=False, delete_after=180)
 
 async def play_next(ctx, voice_client):
@@ -148,11 +148,11 @@ async def play_next(ctx, voice_client):
     if get_repeat_flag(ctx.guild.id):
         track = getattr(voice_client, "last_track", None)
         if not track:
-            await ctx.send("⛔ Нечего повторять.")
+            await ctx.send("⛔ There is nothing to repeat.")
             return
     else:
         if queue.empty():
-            await ctx.send("📭 Очередь пуста.")
+            await ctx.send("📭 The queue is empty.")
             idle_disconnect[ctx.guild.id] = asyncio.create_task(disconnect_after_idle(ctx.guild.id))
             return
         track = await queue.get()
@@ -172,13 +172,13 @@ async def play_next(ctx, voice_client):
     source = await discord.FFmpegOpusAudio.from_probe(stream_url, method="fallback")
     voice_client.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx, voice_client), bot.loop))
 
-    embed = discord.Embed(title="🎶 Сейчас играет", description=f"[{track['title']}]({track['url']})", color=discord.Color.blurple())
-    embed.add_field(name="Автор", value=track.get("author", "Неизвестен"), inline=True)
-    embed.add_field(name="Длительность", value=track.get("duration"), inline=True)
+    embed = discord.Embed(title="🎶 Now playing", description=f"[{track['title']}]({track['url']})", color=discord.Color.blurple())
+    embed.add_field(name="Author", value=track.get("author", "Unknown"), inline=True)
+    embed.add_field(name="Duration", value=track.get("duration"), inline=True)
 
     requester = track.get("requester")
     if requester:
-        embed.set_footer(text=f"Запросил: {requester.display_name}", icon_url=requester.display_avatar.url)
+        embed.set_footer(text=f"Requested: {requester.display_name}", icon_url=requester.display_avatar.url)
 
     if track.get("thumbnail"):
         embed.set_thumbnail(url=track["thumbnail"])
@@ -198,16 +198,16 @@ async def disconnect_after_idle(guild_id):
     vc = discord.utils.get(bot.voice_clients, guild__id=guild_id)
     if vc and not vc.is_playing():
         await vc.disconnect()
-        print(f"⏹ Бот отключён из-за простоя в гильдии {guild_id}")
+        print(f"⏹ Bot disabled due to guild downtime {guild_id}")
 
 @bot.command()
 async def play(ctx, *, query: str):
     try:
         await ctx.message.delete()
     except discord.Forbidden:
-        print("⚠️ У бота нет прав на удаление сообщений.")
+        print("⚠️ The bot does not have permission to delete messages.")
     except Exception as e:
-        print(f"❌ Ошибка при удалении команды: {e}")
+        print(f"❌ Error deleting command: {e}")
 
     if ctx.guild.id in idle_disconnect:
         idle_disconnect[ctx.guild.id].cancel()
@@ -216,7 +216,7 @@ async def play(ctx, *, query: str):
         if ctx.author.voice:
             await ctx.author.voice.channel.connect(self_deaf=True)
         else:
-            await ctx.send("⚠️ Ты должен быть в голосовом канале!")
+            await ctx.send("⚠️ You must be in the voice channel!")
             return
 
     if "youtube.com/watch" in query or "youtu.be/" in query:
@@ -227,18 +227,18 @@ async def play(ctx, *, query: str):
             if not ctx.voice_client.is_playing():
                 await play_next(ctx, ctx.voice_client)
         else:
-            await ctx.send("⚠️ Не удалось загрузить трек.")
+            await ctx.send("⚠️ Failed to load track.")
         return
 
     results = await search_music(query)
     if not results:
-        await ctx.send("⚠️ Ничего не найдено.")
+        await ctx.send("⚠️ Nothing found.")
         return
 
     class SongSelect(Select):
         def __init__(self):
             options = [discord.SelectOption(label=r["title"][:100], value=str(i)) for i, r in enumerate(results)]
-            super().__init__(placeholder="Выбери трек", options=options, min_values=1, max_values=1)
+            super().__init__(placeholder="Select a track", options=options, min_values=1, max_values=1)
 
         async def callback(self, interaction: discord.Interaction):
             index = int(self.values[0])
@@ -246,7 +246,7 @@ async def play(ctx, *, query: str):
             selected["requester"] = ctx.author
             await get_queue(ctx.guild.id).put(selected)
 
-            await interaction.response.send_message("🎶 Трек выбран, загружаю...", ephemeral=True)
+            await interaction.response.send_message("🎶 Track selected, loading...", ephemeral=True)
 
             await asyncio.sleep(2)
             try:
@@ -260,7 +260,7 @@ async def play(ctx, *, query: str):
     view = View(timeout=180)
     view.add_item(SongSelect())
     await ctx.send(
-        embed=discord.Embed(title="🔍 Найдено:", description="Выбери трек:", color=0x3498db),
+        embed=discord.Embed(title="🔍 Found:", description="Select a track:", color=0x3498db),
         view=view
     )
 
@@ -268,6 +268,7 @@ async def play(ctx, *, query: str):
 async def stop(ctx):
     if ctx.voice_client:
         await ctx.voice_client.disconnect()
-        await ctx.send("🛑 Остановлено и отключено.")
+        await ctx.send("🛑 Stopped and disabled.")
 
 bot.run(TOKEN)
+
