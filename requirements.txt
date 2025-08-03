@@ -1,0 +1,5 @@
+discord.py
+yt-dlp
+python-dotenv
+nest_asyncio
+certifi
